@@ -15,9 +15,11 @@ const sendEmail = async (email, subject, text) => {
             subject: subject,
             text: text,
         });
-        res.status(200).json({ message: "Email sent successfully"});
+        console.log("Email sent successfully to:" + email);
+        return true;
     } catch (err) {
-        res.status(500).json({ error: error.message });
+        console.log("Email error:", err.message);
+        throw new Error("Email sending failed");
     }
 }
 

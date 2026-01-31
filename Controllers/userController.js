@@ -32,7 +32,7 @@ export const loginUser = async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found"});
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (isMatch) return res.status(400).json({ message: "Invalid credentials"});
+        if (!isMatch) return res.status(400).json({ message: "Invalid credentials"});
 
         const token = jwt.sign({ id:user._id }, process.env.JWT_SECRET, {expiresIn: "1d"});
         res.status(200).json({ token, userID: user._id, username: user.username});
@@ -46,11 +46,12 @@ export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
-        if (!user) return res.status(500).json({ message: "User with this email does not exist"});
-
+        if (!user) {
+            return res.status(404).json({ message: "User with this email does not exist"});
+        }
         const resetToken = crypto.randomBytes(32).toString("hex");
 
-       const resetUrl = `http://localhost:5173/reset-password/${resetToken}`; 
+        const resetUrl = `http://localhost:5173/reset-password/${resetToken}`; 
 
         const message = `You requested a password reset. Click this link to reset the Password: ${resetUrl}`;
         await sendEmail(user.email, "Password Reset Request", message);
@@ -65,7 +66,7 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await bcrypt.hash(password, 10);
         await User.findOneAndUpdate({ email }, { password:hashedPassword });
         res.status(200).json({ message: "Password updated successfully"});
     } catch (err) {
