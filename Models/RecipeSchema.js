@@ -9,7 +9,7 @@ const RecipeSchema = new mongoose.Schema({
         type: String
     },
     image: {
-        String
+        type: String
     },
     youtubeUrl:{
         type: String
