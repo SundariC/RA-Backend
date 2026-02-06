@@ -17,14 +17,14 @@ const app = express();
 
 app.use(express.json());
 app.use(cors());
-
+app.use("/uploads", express.static("uploads"));
 //3. Test Route
 app.get("/", (req, res) => {
     res.send("API is running...");
 });
 
 //4. Routes
-app.use("/api/recipe", recipeRouter);
+app.use("/api/recipes", recipeRouter);
 app.use("/api/user", userRouter);
 
 //5. Start Server

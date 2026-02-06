@@ -23,4 +23,5 @@ const sendEmail = async (email, subject, text) => {
     }
 }
 
+
 export default sendEmail;

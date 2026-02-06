@@ -3,26 +3,59 @@ import bcrypt from "bcryptjs";
 import sendEmail from "../Utils/sendEmail.js";
 import crypto from "crypto";
 import User from "../Models/UserSchema.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 //1. Register a new user
-export const registerUser = async (req, res) => {
+
+export const register = async (req, res) => {
     try {
-        const { username, email, password } = req.body;
-        const passwordRegex = /^(?=.*[A-Z])(?=.*[@#*])[A-Za-z\d@#*]{8,}$/;
-        if (!passwordRegex.test(password)) {
-            return res.status(400).json({ message: "Password must be at least 8 characters long, contain at least one uppercase letter and one special character (@, #, *)"})   
-        } 
-       const userExists = await User.findOne({ $or: [{username}, {email}] });
-       if (userExists) return  res.status(400).json({ message: "User or Email already exist"});
-       
-       const hashedPassword = await bcrypt.hash(password, 10);
-       const newUser = new User({ username, email, password: hashedPassword });
-       await newUser.save();
-       res.status(201).json({ message: "User registered successfully" });
+        const { username, password, email } = req.body;
+
+        // 1. Check if user already exists
+        const userExists = await User.findOne({ username });
+        if (userExists) {
+            return res.status(400).json({ message: "User already exists!" });
+        }
+
+        // 2. Hash the password (10 salt rounds)
+        // Mukkiam: bcrypt install aagi irukanum (npm install bcrypt)
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 3. Create and Save New User
+        const newUser = new User({
+            username,
+            email, // Email-um schema-la irundha sethukonga
+            password: hashedPassword,
+        });
+
+        await newUser.save();
+        res.status(201).json({ message: "User registered successfully!" });
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Register Error:", err); // Intha log terminal-la varum
+        res.status(500).json({ message: "Internal Server Error", error: err.message });
     }
 };
+// export const registerUser = async (req, res) => {
+//     try {
+//         const { username, email, password } = req.body;
+//         const passwordRegex = /^(?=.*[A-Z])(?=.*[@#*])[A-Za-z\d@#*]{8,}$/;
+//         if (!passwordRegex.test(password)) {
+//             return res.status(400).json({ message: "Password must be at least 8 characters long, contain at least one uppercase letter and one special character (@, #, *)"})   
+//         } 
+//        const userExists = await User.findOne({ $or: [{username}, {email}] });
+//        if (userExists) return  res.status(400).json({ message: "User or Email already exist"});
+       
+//        const hashedPassword = await bcrypt.hash(password, 10);
+//        const newUser = new User({ username, email, password: hashedPassword });
+//        await newUser.save();
+//        res.status(201).json({ message: "User registered successfully" });
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// };
 
 //2. Login user
 export const loginUser = async (req, res) => {
@@ -35,7 +68,7 @@ export const loginUser = async (req, res) => {
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials"});
 
         const token = jwt.sign({ id:user._id }, process.env.JWT_SECRET, {expiresIn: "1d"});
-        res.status(200).json({ token, userID: user._id, username: user.username});
+        res.status(200).json({ token, userID: user._id, username: user.username, email: user.email});
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -71,5 +104,74 @@ export const resetPassword = async (req, res) => {
         res.status(200).json({ message: "Password updated successfully"});
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+};
+
+//5. send feedback 
+// export const sendFeedback = async (req, res) => {
+//     try {
+//         const { email, message } = req.body;
+//         const ownerEmail = process.env.PASS_MAIL; // Inga unga mail ID kudunga
+
+//         const emailContent = `
+//             New Feedback from ChefCloud User:
+//             User Email: ${email}
+//             Message: ${message}
+//         `;
+
+//         await sendEmail(ownerEmail, "ChefCloud User Feedback", emailContent);
+//         res.status(200).json({ message: "Feedback sent successfully!" });
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// };
+
+// Controllers/userController.js
+// export const sendFeedback = async (req, res) => {
+//     try {
+//         const { email, message } = req.body;
+        
+//         if (!email || !message) {
+//             return res.status(400).json({ message: "Email and message are required" });
+//         }
+
+//         console.log(`New Feedback from ${email}: ${message}`);
+        
+//         // Success response kandippa anupuna thaan frontend-la "Feedback sent" toast varum
+//         res.status(200).json({ success: true, message: "Feedback sent successfully!" });
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// };
+import nodemailer from "nodemailer";
+
+export const sendFeedback = async (req, res) => {
+    try {
+        const { email, message } = req.body;
+
+        // 1. Mail Transporter setup (Google Gmail use pannalam)
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.PASS_MAIL,
+                pass: process.env.PASS_KEY   
+            },
+        });
+
+        // 2. Mail Options
+        const mailOptions = {
+            from: email, // User oda email
+            to: process.env.PASS_MAIL, // Ungaluku thaan mail varanum
+            subject: `ChefCloud Feedback from ${email}`,
+            text: message,
+        };
+
+        // 3. Send Mail
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ success: true, message: "Feedback sent to owner's email!" });
+    } catch (err) {
+        console.error("Mail Error:", err);
+        res.status(500).json({ success: false, message: "Server error while sending mail" });
     }
 };
