@@ -18,7 +18,7 @@ const app = express();
 app.use(express.json());
 // Backend - server.js
 app.use(cors({
-  origin:  ["http://localhost:5173", "https://your-frontend-link.com"],
+  origin:  ["http://localhost:5173", "https://ra-frontend-eight.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
