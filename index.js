@@ -16,7 +16,13 @@ connectDB();
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+// Backend - server.js
+app.use(cors({
+  origin:  ["http://localhost:5173", "https://your-frontend-link.com"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use("/uploads", express.static("uploads"));
 //3. Test Route
 app.get("/", (req, res) => {
