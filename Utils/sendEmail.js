@@ -31,13 +31,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-
 const client = SibApiV3Sdk.ApiClient.instance;
 const apiKey = client.authentications["api-key"];
-apiKey.apiKey = process.env.BREVO_API_KEY; 
+apiKey.apiKey = process.env.BREVO_API_KEY;
 
 const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
-
 
 const sendEmail = async (to, subject, text) => {
   try {
@@ -51,14 +49,14 @@ const sendEmail = async (to, subject, text) => {
           email: to,
         },
       ],
-      subject: subject,
+      subject,
       textContent: text,
     };
 
     await tranEmailApi.sendTransacEmail(emailData);
     console.log("Email sent successfully via Brevo");
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Brevo email error:", error);
     throw error;
   }
 };

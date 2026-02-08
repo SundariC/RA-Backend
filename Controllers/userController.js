@@ -21,13 +21,12 @@ export const register = async (req, res) => {
         }
 
         // 2. Hash the password (10 salt rounds)
-        // Mukkiam: bcrypt install aagi irukanum (npm install bcrypt)
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // 3. Create and Save New User
         const newUser = new User({
             username,
-            email, // Email-um schema-la irundha sethukonga
+            email, 
             password: hashedPassword,
         });
 
@@ -35,7 +34,7 @@ export const register = async (req, res) => {
         res.status(201).json({ message: "User registered successfully!" });
 
     } catch (err) {
-        console.error("Register Error:", err); // Intha log terminal-la varum
+        console.error("Register Error:", err); 
         res.status(500).json({ message: "Internal Server Error", error: err.message });
     }
 };
@@ -77,72 +76,75 @@ export const loginUser = async (req, res) => {
 
 //3. Forgot Password
 // export const forgotPassword = async (req, res) => {
+//     const { email } = req.body;
 //     try {
-//         const { email } = req.body;
-//         const user = await User.findOne({ email });
+//         // Step 1: Check user
+//         const user = await User.findOne({ email }); 
 //         if (!user) {
-//             return res.status(404).json({ message: "User with this email does not exist"});
+//             return res.status(404).json({ message: "User not found!" });
 //         }
-//         const resetToken = crypto.randomBytes(32).toString("hex");
 
-//         const resetUrl = `http://localhost:5173/reset-password/$/${user._id}/${resetToken}`; 
+//         // Step 2: Generate Token
+//         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
-//         const message = `You requested a password reset. Click this link to reset the Password: ${resetUrl}`;
-//         await sendEmail(user.email, "Password Reset Request", message);
+//         // Step 3: Setup Transporter
+//         const transporter = nodemailer.createTransport({
+//             service: 'gmail',
+//             auth: {
+//                 user: process.env.PASS_MAIL,
+//                 pass: process.env.PASS_KEY    
+//             }
+//         });
 
-//         res.status(200).json({ message: "Reset link sent to your email"});
+//         const resetLink = `https://ra-frontend-eight.vercel.app/reset-password/${user._id}/${token}`;
+
+//         const mailOptions = {
+//             from: process.env.PASS_MAIL,
+//             to: email,
+//             subject: 'Password Reset Link - Recipe App',
+//             html: `
+//                 <p>You requested a password reset.</p>
+//                 <p>Click the link below to reset your password. This link is valid for 15 minutes:</p>
+//                 <a href="${resetLink}">${resetLink}</a>
+//             `
+//         };
+
+//         // Step 4: Send Mail & Respond
+//         transporter.sendEmail(mailOptions, (error, info) => {
+//             if (error) {
+//                 console.log(error);
+//                 return res.status(500).json({ message: "Error sending email", error: error.message });
+//             } else {
+//                 return res.status(200).json({ message: "Reset link sent to your email!" });
+//             }
+//         });
+
 //     } catch (err) {
-//         res.status(500).json({ error: err.message });
+//         res.status(500).json({ message: "Server error", error: err.message });
 //     }
-// }
+// };
+// FORGOT PASSWORD
 export const forgotPassword = async (req, res) => {
     const { email } = req.body;
     try {
-        // Step 1: Check user
-        const user = await User.findOne({ email }); // Import panna name correct-ah nu check pannunga
-        if (!user) {
-            return res.status(404).json({ message: "User not found!" });
-        }
+        const user = await User.findOne({ email }); 
+        if (!user) return res.status(404).json({ message: "User not found!" });
 
-        // Step 2: Generate Token
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+        const resetLink = `https://ra-frontend-eight.vercel.app/reset-password/${user._id}/${token}`;
 
-        // Step 3: Setup Transporter
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.PASS_MAIL,
-                pass: process.env.PASS_KEY    // Unga 16-digit Google App Password
-            }
-        });
+        const text = `You requested a password reset. Click the link to reset: ${resetLink}`;
+        const subject = "Password Reset Link - Recipe App";
 
-        const resetLink = `http://localhost:5173/reset-password/${user._id}/${token}`;
-
-        const mailOptions = {
-            from: process.env.PASS_MAIL,
-            to: email,
-            subject: 'Password Reset Link - Recipe App',
-            html: `
-                <p>You requested a password reset.</p>
-                <p>Click the link below to reset your password. This link is valid for 15 minutes:</p>
-                <a href="${resetLink}">${resetLink}</a>
-            `
-        };
-
-        // Step 4: Send Mail & Respond
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log(error);
-                return res.status(500).json({ message: "Error sending email", error: error.message });
-            } else {
-                return res.status(200).json({ message: "Reset link sent to your email!" });
-            }
-        });
-
+        await sendEmail(email, subject, text); 
+        
+        return res.status(200).json({ message: "Reset link sent to your email!" });
     } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
+        console.log(err);
+        res.status(500).json({ message: "Error sending email", error: err.message });
     }
 };
+
 
 //4. Reset Password
 export const resetPassword = async (req, res) => {
@@ -199,7 +201,6 @@ export const resetPassword = async (req, res) => {
 
 //         console.log(`New Feedback from ${email}: ${message}`);
         
-//         // Success response kandippa anupuna thaan frontend-la "Feedback sent" toast varum
 //         res.status(200).json({ success: true, message: "Feedback sent successfully!" });
 //     } catch (err) {
 //         res.status(500).json({ error: err.message });
@@ -207,33 +208,45 @@ export const resetPassword = async (req, res) => {
 // };
 
 
+// export const sendFeedback = async (req, res) => {
+//     try {
+//         const { email, message } = req.body;
+
+//         const transporter = nodemailer.createTransport({
+//             service: "gmail",
+//             auth: {
+//                 user: process.env.PASS_MAIL,
+//                 pass: process.env.PASS_KEY   
+//             },
+//         });
+
+//         // 2. Mail Options
+//         const mailOptions = {
+//             from: email, 
+//             to: process.env.PASS_MAIL, 
+//             subject: `ChefCloud Feedback from ${email}`,
+//             text: message,
+//         };
+
+//         await transporter.sendMail(mailOptions);
+
+//         res.status(200).json({ success: true, message: "Feedback sent to owner's email!" });
+//     } catch (err) {
+//         console.error("Mail Error:", err);
+//         res.status(500).json({ success: false, message: "Server error while sending mail" });
+//     }
+// };
+
 export const sendFeedback = async (req, res) => {
     try {
         const { email, message } = req.body;
+        const subject = `ChefCloud Feedback from ${email}`;
 
-        // 1. Mail Transporter setup (Google Gmail use pannalam)
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.PASS_MAIL,
-                pass: process.env.PASS_KEY   
-            },
-        });
-
-        // 2. Mail Options
-        const mailOptions = {
-            from: email, // User oda email
-            to: process.env.PASS_MAIL, // Ungaluku thaan mail varanum
-            subject: `ChefCloud Feedback from ${email}`,
-            text: message,
-        };
-
-        // 3. Send Mail
-        await transporter.sendMail(mailOptions);
+        await sendEmail(process.env.PASS_MAIL, subject, `User Email: ${email}\nMessage: ${message}`);
 
         res.status(200).json({ success: true, message: "Feedback sent to owner's email!" });
     } catch (err) {
-        console.error("Mail Error:", err);
+        console.log(err);
         res.status(500).json({ success: false, message: "Server error while sending mail" });
     }
 };

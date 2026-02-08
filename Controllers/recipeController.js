@@ -65,65 +65,19 @@ export const createRecipe = async (req, res) => {
 // };
 
 // Example Backend Logic
+// 
 export const updateRecipe = async (req, res) => {
     try {
         const { id } = req.params;
-
-        // 1. Check if recipe exists before updating
-        const existingRecipe = await Recipe.findById(id);
-        if (!existingRecipe) {
-            return res.status(404).json({ message: "Recipe not found in our database!" });
-        }
-
-        // 2. Prepare the update object from request body
-        const { title, description, category, ingredients, instructions, youtubeUrl } = req.body;
+        // req.body-la irukura details-ah update panni, 'new: true' valiya update aana data-va vanganum
+        const updatedRecipe = await Recipe.findByIdAndUpdate(id, req.body, { new: true });
         
-        const updateFields = {
-            title: title || existingRecipe.title,
-            description: description || existingRecipe.description,
-            category: category || existingRecipe.category,
-            instructions: instructions || existingRecipe.instructions,
-            youtubeUrl: youtubeUrl || existingRecipe.youtubeUrl,
-        };
-
-        // 3. Professional Ingredients Parsing
-        // If ingredients come as a string (comma separated), convert to Array
-        if (ingredients) {
-            if (typeof ingredients === 'string') {
-                updateFields.ingredients = ingredients
-                    .split(',')
-                    .map(item => item.trim())
-                    .filter(item => item !== ""); // Removes empty strings
-            } else if (Array.isArray(ingredients)) {
-                updateFields.ingredients = ingredients;
-            }
+        if (!updatedRecipe) {
+            return res.status(404).json({ message: "Recipe not found" });
         }
-
-        // 4. Image Handling (Multer)
-        // Only update imageUrl if a new file is actually uploaded
-        if (req.file) {
-            updateFields.imageUrl = `uploads/${req.file.filename}`;
-        }
-
-        // 5. Execute Update with Validation
-        const updatedRecipe = await Recipe.findByIdAndUpdate(
-            id,
-            { $set: updateFields },
-            { 
-                new: true,           // Returns the updated document
-                runValidators: true  // Ensures data follows Schema rules
-            }
-        );
-
-        console.log("Success: Recipe updated successfully.");
-        return res.status(200).json(updatedRecipe);
-
-    } catch (error) {
-        console.error("Professional Update Error:", error);
-        return res.status(500).json({ 
-            message: "Internal Server Error during update", 
-            error: error.message 
-        });
+        res.status(200).json({ message: "Recipe Updated Successfully!", updatedRecipe });
+    } catch (err) {
+        res.status(500).json({ message: "Update Error", error: err.message });
     }
 };
 
